@@ -1,0 +1,22 @@
+---
+description: Paper-to-Brief project context
+alwaysApply: true
+---
+# Paper-to-Brief
+
+Deep research agent built with LangChain `deepagents` (LangGraph underneath). Pydantic AI will be added in Phase 2 for validated structured outputs; do not add it yet.
+
+## Layout
+- `src/brief/tools.py` — web_search, fetch_page
+- `src/brief/prompts.py` — main, researcher, critic prompts
+- `src/brief/agent.py` — create_deep_agent wiring (todos, filesystem, subagents)
+- `src/brief/baseline.py` — plain agent with no deep-agent features, for comparison
+- `run.py` — CLI entry point
+- `evals/questions.txt` — fixed eval questions, same for every milestone
+- `runs/<run_id>/` — per-run agent files (question.md, notes/, draft/, review.md, final/, stats.json); git-ignored
+
+## Conventions
+- Use `uv` for dependencies. Python 3.11+.
+- Prefer `create_deep_agent` over hand-built LangChain agents.
+- Every claim in a brief needs a source URL.
+- Keep structured-output steps as separate functions so Pydantic AI can replace them later.
