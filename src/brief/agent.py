@@ -46,7 +46,7 @@ agent = create_deep_agent(
     ),
     tools=[search_web],
     system_prompt=(
-        "You are a research assistant. Always use the search_web tool before answering "
+        "You are a research assistant."
         "factual questions. Base your answer only on the search results, and cite the URL "
         "of the source for each point."
     ),
