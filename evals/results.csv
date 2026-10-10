@@ -1,2 +1,3 @@
 timestamp,milestone,question,seconds,tool_calls,tool_calls_by_name,input_tokens,output_tokens,total_tokens,run_dir,quality_1_to_5
 20261010-195810,m0,What is MCP?,16.4,6,"{""write_todos"": 2, ""search_web"": 1, ""fetch_page"": 2, ""write_file"": 1}",33085,595,33680,runs\20261010-195810_what-is-mcp,
+20261010-201034,m2,What is MCP?,18.2,8,"{""write_todos"": 2, ""task"": 1, ""search_web"": 1, ""fetch_page"": 3, ""write_file"": 1}",33746,989,34735,runs\20261010-201034_what-is-mcp,

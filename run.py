@@ -19,6 +19,8 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackHandler
+
 from brief.agent import agent
 
 ROOT = Path(__file__).parent
@@ -46,26 +48,40 @@ def _slug(text: str, length: int = 40) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:length]
 
 
+class ToolCallCounter(BaseCallbackHandler):
+    """Counts every tool call in a run, including calls made inside subagents."""
+
+    def __init__(self):
+        self.counts = Counter()
+
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        name = (serialized or {}).get("name") or kwargs.get("name") or "unknown"
+        self.counts[name] += 1
+
+
 def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
     print(f"\n=== {question}")
+    # Callbacks see every model and tool call, subagents included. Counting from
+    # result["messages"] would miss subagent work, which never enters that list.
+    tool_counter = ToolCallCounter()
+    usage = UsageMetadataCallbackHandler()
+
     start = time.perf_counter()
-    result = agent.invoke({"messages": [{"role": "user", "content": question}]})
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": question}]},
+        config={"callbacks": [tool_counter, usage]},
+    )
     seconds = round(time.perf_counter() - start, 1)
 
     messages = result["messages"]
     if verbose:
+        # Main agent only. Subagent steps are visible in LangSmith.
         for m in messages:
             m.pretty_print()
 
-    tool_calls = Counter()
-    input_tokens = output_tokens = 0
-    for m in messages:
-        for call in getattr(m, "tool_calls", None) or []:
-            tool_calls[call["name"]] += 1
-        usage = getattr(m, "usage_metadata", None)
-        if usage:
-            input_tokens += usage.get("input_tokens", 0)
-            output_tokens += usage.get("output_tokens", 0)
+    tool_calls = tool_counter.counts
+    input_tokens = sum(u.get("input_tokens", 0) for u in usage.usage_metadata.values())
+    output_tokens = sum(u.get("output_tokens", 0) for u in usage.usage_metadata.values())
 
     answer = _text(messages[-1])
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -88,7 +104,8 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
     (run_dir / "answer.md").write_text(answer, encoding="utf-8")
     (run_dir / "stats.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
 
-    print(answer)
+    if not verbose:  # verbose already printed it as the last message
+        print(answer)
     print(
         f"\n--- {seconds}s | {stats['tool_calls']} tool calls {dict(tool_calls)} | "
         f"{stats['total_tokens']} tokens | saved to {stats['run_dir']}"
