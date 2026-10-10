@@ -29,8 +29,35 @@ def search_web(query: str, max_results: int = 5) -> str:
 
     result_str = ""
     for i, result in enumerate(results):
-        result_str += f"{i+1}. Title: {result['title']}, URL: {result['url']}, Summary: {result.get('content', '')[:300]}\n"    
-        return result_str
+        result_str += f"{i+1}. Title: {result['title']}, URL: {result['url']}, Summary: {result.get('content', '')[:300]}\n"
+    return result_str
+
+
+MAX_PAGE_CHARS = 8000
+
+
+def fetch_page_content(url: str) -> str:
+    """Read the full copntext of the web page. Use it after search_web tool, on the 2-3 relevant urls,
+    to get the details before answering.
+
+    Args:
+        url: the full url to read, taken from search_web tool.
+    """
+
+    try:
+        response = (client.extract(urls=[url]))
+    except Exception as e:
+        return f"Error fetching {url}: {e}"
+
+    results = response.get("results", [])
+    if not results:
+        return f"Error could not read the url: {url}"
+
+    txt = (results[0].get("raw_content") or "").strip()
+    if len(txt) > MAX_PAGE_CHARS:
+        txt = txt[:MAX_PAGE_CHARS] + "\n\n[...truncated]"
+
+    return f"Source: {url} \n \n {txt}"
 
 
 # def answer_question(query: str) -> str:
@@ -44,11 +71,12 @@ agent = create_deep_agent(
         max_retries=15,
         timeout=120,
     ),
-    tools=[search_web],
+    tools=[search_web, fetch_page_content],
     system_prompt=(
-        "You are a research assistant."
-        "factual questions. Base your answer only on the search results, and cite the URL "
-        "of the source for each point."
+        "You are a research assistant. "
+        # "Use search_web to find sources, then use fetch_page_content to read the 2-3 most relevant ones " It does perform the same without this also.
+        "Base your answer only on what you read, and cite the URL of the "
+        "source for each point."
     ),
 )
 
