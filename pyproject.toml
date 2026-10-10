@@ -11,4 +11,5 @@ dependencies = [
     "langchain-openai>=1.7.0",
     "langgraph-cli[inmem]>=0.4.33",
     "python-dotenv>=1.2.4",
+    "tavily-python>=0.8.5",
 ]
