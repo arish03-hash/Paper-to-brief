@@ -1,5 +1,3 @@
-"""System prompts. Iterate on these and compare runs in LangSmith."""
-
 # Milestone 0. The "use search_web then fetch_page" workflow line was removed on
 # purpose: the tool docstrings already say when to use each tool, and the agent
 # performed the same without it.
