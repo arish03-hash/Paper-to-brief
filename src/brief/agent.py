@@ -13,9 +13,6 @@ from brief.tools import RESEARCH_TOOLS
 
 NOTES_DIR = Path("runs/notes")
 
-# Models: the main agent (plans, drafts, applies fixes) and the critic need careful
-# instruction-following, so they use gpt-4.1-mini. Researchers only search and
-# summarise pages, so they stay on the cheaper gpt-4o-mini.
 MAIN_MODEL = "gpt-4.1-mini"
 RESEARCHER_MODEL = "openai:gpt-4o-mini"
 CRITIC_MODEL = "openai:gpt-4.1-mini"
