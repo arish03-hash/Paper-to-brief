@@ -1276,7 +1276,7 @@ wheels = [
 [[package]]
 name = "paper-to-brief"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "colorama" },
     { name = "deepagents" },

@@ -1,0 +1,7 @@
+# Fixed eval questions. Run every milestone on these same questions.
+# One question per line. Lines starting with # are ignored.
+Compare LangGraph, CrewAI and AutoGen for building multi-agent systems: strengths, weaknesses, and when to use each.
+What are the main approaches to evaluating AI coding agents, and where do the benchmarks disagree?
+What is the Model Context Protocol (MCP), how widely is it being adopted, and what are its main security concerns?
+How do retrieval-augmented generation (RAG) and long-context models compare for answering questions over large document collections?
+What are the main techniques for reducing hallucinations in LLM applications, and what evidence exists for how well each works?

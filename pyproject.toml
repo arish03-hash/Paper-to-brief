@@ -1,7 +1,7 @@
 [project]
 name = "paper-to-brief"
 version = "0.1.0"
-description = "Add your description here"
+description = "A deep research agent that turns a question into a cited brief."
 requires-python = ">=3.13"
 dependencies = [
     "colorama>=0.4.6",
@@ -13,3 +13,12 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "tavily-python>=0.8.5",
 ]
+
+# Makes src/brief an installable package, so `from brief.tools import ...`
+# works from run.py, LangGraph Studio and anywhere else. Run `uv sync` once after this.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/brief"]
