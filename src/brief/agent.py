@@ -8,14 +8,20 @@ from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import TodoListMiddleware
 from langchain.chat_models import init_chat_model
 
-from brief.prompts import RESEARCHER_PROMPT, SYSTEM_PROMPT
+from brief.prompts import CRITIC_PROMPT, RESEARCHER_PROMPT, SYSTEM_PROMPT
 from brief.tools import RESEARCH_TOOLS
 
-ROOT = Path(__file__).resolve().parents[2]  # project root, wherever you run from
-NOTES_DIR = ROOT / "runs" / "notes"
+NOTES_DIR = Path("runs/notes")
 
-# Milestone 2: web research happens inside this subagent. Its fetched pages stay in
-# its own context; the main agent only receives the short report it returns.
+# Models: the main agent (plans, drafts, applies fixes) and the critic need careful
+# instruction-following, so they use gpt-4.1-mini. Researchers only search and
+# summarise pages, so they stay on the cheaper gpt-4o-mini.
+MAIN_MODEL = "gpt-4.1-mini"
+RESEARCHER_MODEL = "openai:gpt-4o-mini"
+CRITIC_MODEL = "openai:gpt-4.1-mini"
+
+# M2: web research happens inside this subagent. Its fetched pages stay in its own
+# context; the main agent only receives the short report it returns.
 RESEARCHER = {
     "name": "researcher",
     "description": (
@@ -23,24 +29,29 @@ RESEARCHER = {
         "to the findings file you name, and returns a short cited summary. "
         "Use one researcher per sub-question."
     ),
+    "model": RESEARCHER_MODEL,
     "system_prompt": RESEARCHER_PROMPT,
     "tools": RESEARCH_TOOLS,
 }
 
-RESEARCHER = {
-    "name": "researcher",
+# M3: reviews the draft against the notes. No web tools: it checks the draft against
+# what the researchers actually read. deepagents gives it the file tools automatically.
+CRITIC = {
+    "name": "critic",
     "description": (
-        "Researches ONE sub-question on the web (search + read pages), saves notes"
-        "to the findings file you name, and returns a short cited summary."
-        "Use one researcher per sub-question."
+        "Reviews a draft answer against the research notes in /findings/ and reports "
+        "unsupported claims, wrong citations, duplicates, weak sources and missing parts. "
+        "Call it once, after the draft is saved."
     ),
-    "system_prompt": RESEARCHER_PROMPT,
-    "tools": RESEARCH_TOOLS,
+    "model": CRITIC_MODEL,
+    "system_prompt": CRITIC_PROMPT,
+    "tools": [],
 }
+
 
 def build_agent():
     model = init_chat_model(
-        model="gpt-4o-mini",
+        model=MAIN_MODEL,
         api_key=os.getenv("OPENAI_API_KEY"),
         max_retries=15,
         timeout=120,
@@ -49,7 +60,7 @@ def build_agent():
         model=model,
         tools=[],  # main agent has no web tools: it must delegate to the researcher
         system_prompt=SYSTEM_PROMPT,
-        subagents=[RESEARCHER],
+        subagents=[RESEARCHER, CRITIC],
         middleware=[TodoListMiddleware()],
         backend=FilesystemBackend(root_dir=NOTES_DIR, virtual_mode=True),
     )
