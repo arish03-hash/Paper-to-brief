@@ -46,7 +46,7 @@ CRITIC = {
 }
 
 
-def build_agent():
+def build_agent(*, checkpointer=None):
     model = init_chat_model(
         model=MAIN_MODEL,
         api_key=os.getenv("OPENAI_API_KEY"),
@@ -57,9 +57,18 @@ def build_agent():
         model=model,
         tools=[],  # main agent has no web tools: it must delegate to the researcher
         system_prompt=SYSTEM_PROMPT,
-        subagents=[RESEARCHER, CRITIC],
+        subagents=[
+            {**RESEARCHER, "interrupt_on": {}}, 
+            {**CRITIC, "interrupt_on": {}}
+            ],
         middleware=[TodoListMiddleware()],
         backend=FilesystemBackend(root_dir=NOTES_DIR, virtual_mode=True),
+        interrupt_on={
+            "write_todos": {
+                "allowed_decisions": ["approve", "reject"],
+            },
+        },
+        checkpointer=checkpointer,
     )
 
 

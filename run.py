@@ -18,10 +18,13 @@ import time
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
 
 from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackHandler
 
-from brief.agent import agent
+from brief.agent import build_agent
 
 ROOT = Path(__file__).parent
 RUNS_DIR = ROOT / "runs"
@@ -35,6 +38,20 @@ CSV_COLUMNS = [
     "run_dir", "quality_1_to_5",
 ]
 
+
+def _read_approval() -> str:
+    while True:
+        choice = input("Approve or reject? [a/r]: ").strip().lower()
+        if choice in ["a", "r"]:
+            return choice
+        print("Enter a to approve or r to reject")
+
+def _read_feedback() -> str:
+    while True:
+        feedback = input("Reason or requested change: ").strip()
+        if feedback:
+            return feedback
+        print("Please provide a feedback")
 
 def _text(message) -> str:
     content = message.content
@@ -66,11 +83,55 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
     tool_counter = ToolCallCounter()
     usage = UsageMetadataCallbackHandler()
 
+    agent = build_agent(checkpointer = InMemorySaver())
+    config = {
+        "configurable": {"thread_id": str(uuid4())},
+        "callbacks": [tool_counter, usage],
+    }
+
     start = time.perf_counter()
     result = agent.invoke(
         {"messages": [{"role": "user", "content": question}]},
-        config={"callbacks": [tool_counter, usage]},
+        config=config,
     )
+
+    while result.get("__interrupt__"):
+        responses = {}
+
+        for pending in result["__interrupt__"]:
+            payload = pending.value
+
+            if (
+                not isinstance(payload, dict)
+                or "action_requests" not in payload
+            ):
+                raise ValueError("unexpected approval interrupt payload")
+
+            decisions = []
+
+            for action in payload["action_requests"]:
+                print(f"\nTool awaiting approval: {action['name']}")
+                print(json.dumps(action["args"], indent=2))
+
+                if _read_approval() == "a":
+                    decisions.append({"type": "approve"})
+                else:
+                    feedback = _read_feedback()
+                    decisions.append({
+                        "type": "reject",
+                        "message": (
+                            "This tool call was not expected. "
+                            f"Human feedback: {feedback}"
+                        ),
+                    })
+
+            responses[pending.id] = {"decisions": decisions}
+
+        result = agent.invoke(
+            Command(resume=responses),
+            config=config,
+        )
+        
     seconds = round(time.perf_counter() - start, 1)
 
     messages = result["messages"]
