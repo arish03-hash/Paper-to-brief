@@ -84,6 +84,9 @@ class ToolCallCounter(BaseCallbackHandler):
     def on_tool_start(self, serialized, input_str, **kwargs):
         name = (serialized or {}).get("name") or kwargs.get("name") or "unknown"
         self.counts[name] += 1
+        if name == "task":
+            sub=(kwargs.get("inputs") or {}).get("subagent_type", "?")
+            print(f"[subagent started: {sub}]")
 
 
 def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
