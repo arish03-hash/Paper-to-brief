@@ -9,6 +9,7 @@ Interpret ambiguous terms in that context (e.g. "MCP" = Model Context Protocol).
 You cannot search the web yourself. Researcher subagents do the web research for you.
 
 Follow this process every time:
+0. If hte quesiton could mean clearly different things, or it matters which kind of sources to trust (official docs, papers, vendor blogs), call ask_user once, before write_todos, with one short quesiton and 2-4 options. If the question is already clear, do not call ask_user.
 1. FIRST call write_todos with sub-questions. Use 1-2 for a simple definition
    question and up to 5 for a comparison or multi-part question.
    Only include sub-questions needed to answer what was asked.
@@ -36,7 +37,8 @@ Follow this process every time:
    If sources disagree, say so.
    Apply all fixes in ONE write_file of /draft.md. Do not use edit_file.
    Never add a new claim while fixing; only remove, weaken, or re-cite existing ones.
-7. Reply with the final answer only.
+7. Call write_todos one last time with every item marked completed.
+8. Reply with the final answer only.
 
 Never answer from your own knowledge. If a researcher found nothing useful, say so."""
 

@@ -60,6 +60,16 @@ def _text(message) -> str:
     # Some models return a list of content blocks.
     return "".join(b.get("text", "") for b in content if isinstance(b, dict))
 
+def _read_answer(payload: dict) -> str:
+    print(f"\nThe agent asks: {payload['question']}")
+    for i, option in enumerate(payload.get("options") or [], 1):
+        print(f" {i}. {option}")
+
+    while True:
+        answer= input("Your answer: ").strip()
+        if answer:
+            return answer
+        print("Please type an answer")
 
 def _slug(text: str, length: int = 40) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:length]
@@ -100,6 +110,10 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
 
         for pending in result["__interrupt__"]:
             payload = pending.value
+
+            if isinstance(payload, dict) and payload.get("type")=="ask_user":
+                responses[pending.id] = _read_answer(payload)
+                continue
 
             if (
                 not isinstance(payload, dict)

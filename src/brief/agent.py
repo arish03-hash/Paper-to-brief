@@ -9,7 +9,7 @@ from langchain.agents.middleware import TodoListMiddleware
 from langchain.chat_models import init_chat_model
 
 from brief.prompts import CRITIC_PROMPT, RESEARCHER_PROMPT, SYSTEM_PROMPT
-from brief.tools import RESEARCH_TOOLS
+from brief.tools import RESEARCH_TOOLS, LEAD_TOOLS
 
 NOTES_DIR = Path("runs/notes")
 
@@ -55,7 +55,7 @@ def build_agent(*, checkpointer=None):
     )
     return create_deep_agent(
         model=model,
-        tools=[],  # main agent has no web tools: it must delegate to the researcher
+        tools=LEAD_TOOLS, 
         system_prompt=SYSTEM_PROMPT,
         subagents=[
             {**RESEARCHER, "interrupt_on": {}}, 

@@ -3,12 +3,26 @@
 import os
 
 from tavily import TavilyClient
+from langgraph.types import interrupt
 
 MAX_PAGE_CHARS = 8000
 SNIPPET_CHARS = 300
 
 client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
+def ask_user(question: str, options: list[str] | None = None) -> str:
+    """Ask the human one short question and wait for the answer. Use it only if you are unsure about the question i.e. quesiton is ambiguous or ot ask which kinsd of sources to prioritise.
+
+    Args: 
+        question: The question to show the human.
+        option: A list of options of suggested answers to show the human.
+    """
+    answer = interrupt({"type": "ask_user", "question": question, "options": options or []})
+
+    return f"The user answered: {answer}"
+
+
+LEAD_TOOLS = [ask_user]
 
 def search_web(query: str, max_results: int = 5) -> str:
     """Search the web for up-to-date information.
