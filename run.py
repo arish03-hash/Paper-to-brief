@@ -21,6 +21,7 @@ from pathlib import Path
 from uuid import uuid4
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
+from brief.workflow import build_workflow
 
 from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackHandler
 
@@ -71,6 +72,21 @@ def _read_answer(payload: dict) -> str:
             return answer
         print("Please type an answer")
 
+def _read_review(payload: dict) -> dict:
+    print("\n=== Draft for review ===")
+    print(payload["draft"])
+    print(f"\n(revisions used: {payload['revisions']} of {payload['max_revisions']})")
+
+    while True:
+        choice = input("Approve, revise or cancel? [a/r/c]: ").strip().lower()
+        if choice == "a":
+            return {"action": "approve"}
+        if choice == "c":
+            return {"action": "cancel"}
+        if choice == "r":
+            return {"action": "revise", "feedback": _read_feedback()}
+        print("Enter a to approve, r to revise or c to cancel")
+
 def _slug(text: str, length: int = 40) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:length]
 
@@ -89,14 +105,13 @@ class ToolCallCounter(BaseCallbackHandler):
             print(f"[subagent started: {sub}]")
 
 
-def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
+def run_question(question: str, milestone: str, verbose: bool = False) -> dict|None:
     print(f"\n=== {question}")
-    # Callbacks see every model and tool call, subagents included. Counting from
-    # result["messages"] would miss subagent work, which never enters that list.
+   
     tool_counter = ToolCallCounter()
     usage = UsageMetadataCallbackHandler()
 
-    agent = build_agent(checkpointer = InMemorySaver())
+    agent = build_workflow(checkpointer = InMemorySaver())
     config = {
         "configurable": {"thread_id": str(uuid4())},
         "callbacks": [tool_counter, usage],
@@ -104,7 +119,7 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
 
     start = time.perf_counter()
     result = agent.invoke(
-        {"messages": [{"role": "user", "content": question}]},
+        {"messages": [{"role": "user", "content": question}], "revisions": 0},
         config=config,
     )
 
@@ -116,6 +131,10 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
 
             if isinstance(payload, dict) and payload.get("type")=="ask_user":
                 responses[pending.id] = _read_answer(payload)
+                continue
+
+            if isinstance(payload, dict) and payload.get("type") == "review":
+                responses[pending.id] = _read_review(payload)
                 continue
 
             if (
@@ -150,6 +169,10 @@ def run_question(question: str, milestone: str, verbose: bool = False) -> dict:
         )
         
     seconds = round(time.perf_counter() - start, 1)
+
+    if result.get("status") != "approved":
+        print(f"\n Not saved (status: {result.get('status')}).")
+        return None
 
     messages = result["messages"]
     if verbose:
@@ -225,7 +248,7 @@ def main() -> None:
     else:
         parser.error('give a question, e.g. run.py "What is MCP?", or use --evals')
 
-    rows = [run_question(q, args.milestone, args.verbose) for q in questions]
+    rows = [r for r in (run_question(q, args.milestone, args.verbose) for q in questions) if r]
     append_results(rows)
     print(f"\nAppended {len(rows)} row(s) to {RESULTS_FILE.relative_to(ROOT)}")
 
